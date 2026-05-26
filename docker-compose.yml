@@ -13,6 +13,7 @@ services:
       - registry-net
 
   cloudflared:
+    profiles: [cloudflare]
     image: cloudflare/cloudflared:latest
     container_name: cloudflared
     restart: unless-stopped
