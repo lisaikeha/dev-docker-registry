@@ -1,0 +1,15 @@
+# Cloudflared 配置（config-file 模式，备选方案）
+# 如果不想在 Cloudflare Dashboard 管理 ingress 规则，可用此文件
+# 使用时需先执行: cloudflared tunnel create <name>
+# 然后将 credentials.json 放入本目录，并在 docker-compose 中切换 command
+#
+# docker-compose.yml 中 cloudflared 的 command 改为:
+#   command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+
+tunnel: <tunnel-id>
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: registry.yourdomain.com
+    service: http://registry:5000
+  - service: http_status:404

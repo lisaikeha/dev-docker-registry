@@ -1,0 +1,59 @@
+version: "3.8"
+
+services:
+  registry:
+    image: registry:2
+    container_name: registry
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - ./registry/config.yml:/etc/docker/registry/config.yml:ro
+      - ./registry/data:/var/lib/registry
+      - ./auth:/auth
+    networks:
+      - registry-net
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    networks:
+      - registry-net
+    depends_on:
+      - registry
+
+  registry-cleanup:
+    image: docker:cli
+    container_name: registry-cleanup
+    restart: unless-stopped
+    depends_on:
+      - registry
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./registry/data:/var/lib/registry:ro
+      - ./registry/cleanup.sh:/cleanup.sh:ro
+    environment:
+      - REGISTRY_URL=http://registry:5000
+      - REGISTRY_USER=${REGISTRY_USER:-}
+      - REGISTRY_PASS=${REGISTRY_PASS:-}
+    networks:
+      - registry-net
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apk add --no-cache curl jq
+        trap 'exit 0' TERM INT
+        /cleanup.sh || true
+        while true; do
+          sleep 86400 &
+          wait $!
+          /cleanup.sh || true
+        done
+
+networks:
+  registry-net:
+    driver: bridge
