@@ -33,18 +33,12 @@ services:
       - registry
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./registry/data:/var/lib/registry:ro
       - ./registry/cleanup.sh:/cleanup.sh:ro
-    environment:
-      - REGISTRY_URL=http://registry:5000
-      - REGISTRY_USER=${REGISTRY_USER:-}
-      - REGISTRY_PASS=${REGISTRY_PASS:-}
     networks:
       - registry-net
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        apk add --no-cache curl jq
         trap 'exit 0' TERM INT
         /cleanup.sh || true
         while true; do
