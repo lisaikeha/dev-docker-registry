@@ -48,14 +48,23 @@ for repo in $catalog; do
       # If this digest is not in the tagged set, delete it
       if ! echo "$tagged_digests" | grep -qF "$digest"; then
         log "    Deleting untagged manifest: ${digest}"
-        curl -sSf -X DELETE ${CURL_AUTH} "${REGISTRY_URL}/v2/${repo}/manifests/${digest}" || true
+        http_code=$(curl -sS -o /dev/null -w "%{http_code}" -X DELETE ${CURL_AUTH} \
+          -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+          "${REGISTRY_URL}/v2/${repo}/manifests/${digest}")
+        if [ "$http_code" = "202" ]; then
+          log "      -> Deleted successfully"
+        else
+          log "      -> Delete returned HTTP ${http_code} (may already be deleted or auth required)"
+        fi
       fi
     done
   fi
 done
 
 # Step 2: Run garbage collection on the registry container
+# --delete-untagged: removes manifests that no longer have any tag pointing to them,
+# which is exactly what happens when you push the same tag repeatedly.
 log "  Running garbage collection..."
-docker exec registry /bin/registry garbage-collect /etc/docker/registry/config.yml
+docker exec registry /bin/registry garbage-collect --delete-untagged /etc/docker/registry/config.yml
 
 log "Cleanup complete."
